@@ -1,7 +1,10 @@
-.. image:: ./SAGElogo2.png
-   :width: 300
-   :alt: Project Logo
-   :align: center
+This repo includes my work with SAGE26 as a place for backing up my work, version control and saving my unique plotting scripts. 
+
+The original work of this repo can be found at https://github.com/MBradley1985/SAGE26 amd further https://github.com/sage-home/sage-model.
+
+Below is the readME from the latest version of the SAGE code.  
+
+
 *************************************
 Semi-Analytic Galaxy Evolution (SAGE)
 *************************************
