@@ -325,7 +325,8 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             // s = ln(1 + 0.6*chi) / (0.04 * Sigma_comp * Z')
             // Note: 0.04 constant includes units for Sigma in Msun/pc^2
             float s = 0.0;
-            if (Sigma_comp > 0.0) {
+            /* BUG FIX: Check both Sigma_comp > 0 AND tau_c > 0 to avoid division by zero */
+            if (Sigma_comp > 0.0 && tau_c > 1e-10) {
                 s = log(1.0 + 0.6 * chi + 0.01 * chi * chi) / (0.6 * tau_c);
             } else {
                 s = 100.0; // Large s implies f_H2 -> 0
@@ -476,13 +477,19 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
 
                 // t_dep_hydro_star (Eq 21)
                 // 3.1/Sigma^0.25 + 100 / ( (fc/5) * Z' * sqrt(rho_sd_2) * Sigma )
-                double t_hydro_star_Gyr = 3.1 / pow(Sigma_gas, 0.25) +
-                                          100.0 / ((fc/5.0) * Z_prime * sqrt(rho_sd_2) * Sigma_gas);
-
-                // t_dep_hydro_gas (Eq 22)
-                // 3.1/Sigma^0.25 + 360 / ( (fc/5) * Z' * Sigma^2 )
-                double t_hydro_gas_Gyr = 3.1 / pow(Sigma_gas, 0.25) +
-                                         360.0 / ((fc/5.0) * Z_prime * pow(Sigma_gas, 2.0));
+                /* BUG FIX: Protect against division by zero when Sigma_gas is zero */
+                double t_hydro_star_Gyr, t_hydro_gas_Gyr;
+                if(Sigma_gas > 1e-10) {
+                    t_hydro_star_Gyr = 3.1 / pow(Sigma_gas, 0.25) +
+                                       100.0 / ((fc/5.0) * Z_prime * sqrt(rho_sd_2) * Sigma_gas);
+                    // t_dep_hydro_gas (Eq 22)
+                    // 3.1/Sigma^0.25 + 360 / ( (fc/5) * Z' * Sigma^2 )
+                    t_hydro_gas_Gyr = 3.1 / pow(Sigma_gas, 0.25) +
+                                      360.0 / ((fc/5.0) * Z_prime * pow(Sigma_gas, 2.0));
+                } else {
+                    t_hydro_star_Gyr = 1.0e10;  // Very large timescale for zero gas
+                    t_hydro_gas_Gyr = 1.0e10;
+                }
 
                 // ----------------------------------------------------------------
                 // 3. Analytic Approximation for Depletion Time (K13 Eq. 28)
@@ -662,13 +669,15 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
             } else {
                 double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
                 double v_term;
-                if (vc < V_CRIT) {
-                    v_term = pow(vc / V_CRIT, -3.2);
+                /* BUG FIX: Apply floor to vc to prevent overflow in pow() for very small halos */
+                double vc_floored = (vc < 1.0) ? 1.0 : vc;  /* Floor at 1 km/s */
+                if (vc_floored < V_CRIT) {
+                    v_term = pow(vc_floored / V_CRIT, -3.2);
                 } else {
-                    v_term = pow(vc / V_CRIT, -1.0);
+                    v_term = pow(vc_floored / V_CRIT, -1.0);
                 }
                 double scaling_factor = z_term * v_term;
-                
+
                 // Reheating with Muratov scaling: η = 2.9 × (1+z)^α × (V/60)^β
                 double eta_reheat = run_params->FeedbackReheatingEpsilon * scaling_factor;
                 // Store mass loading for analysis (cast to float)
@@ -708,10 +717,12 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
                 } else {
                     double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
                     double v_term;
-                    if (vc < V_CRIT) {
-                        v_term = pow(vc / V_CRIT, -3.2);
+                    /* BUG FIX: Apply floor to vc to prevent overflow in pow() for very small halos */
+                    double vc_floored = (vc < 1.0) ? 1.0 : vc;  /* Floor at 1 km/s */
+                    if (vc_floored < V_CRIT) {
+                        v_term = pow(vc_floored / V_CRIT, -3.2);
                     } else {
-                        v_term = pow(vc / V_CRIT, -1.0);
+                        v_term = pow(vc_floored / V_CRIT, -1.0);
                     }
                     double scaling_factor = z_term * v_term;
                     
@@ -757,6 +768,15 @@ void starformation_and_feedback(const int p, const int centralgal, const double 
     // update for star formation
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
     update_from_star_formation(p, stars, metallicity, galaxies, run_params);
+
+    // Track star formation history - accumulate stellar mass formed at this snapshot
+    // Note: RecycleFraction * stars is instantly recycled, so actual stellar mass added is (1 - RecycleFraction) * stars
+    if(run_params->SaveFullSFH) {
+        const int snapnum = galaxies[p].SnapNum;
+        if(snapnum >= 0 && snapnum < ABSOLUTEMAXSNAPS) {
+            galaxies[p].SFHMassDisk[snapnum] += (1.0 - run_params->RecycleFraction) * stars;
+        }
+    }
 
     // recompute the metallicity of the cold phase
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
@@ -856,7 +876,7 @@ void update_from_feedback(const int p, const int centralgal, double reheated_mas
         if(run_params->CGMrecipeOn == 1) {
             if(galaxies[centralgal].Regime == 0) {
                 // CGM-regime: Cold --> CGM --> Ejected
-                
+
                 // Add reheated gas to CGM
                 galaxies[centralgal].CGMgas += reheated_mass;
                 galaxies[centralgal].MetalsCGMgas += metallicity * reheated_mass;
@@ -867,15 +887,21 @@ void update_from_feedback(const int p, const int centralgal, double reheated_mas
                 }
                 const double metallicityCGM = get_metallicity(galaxies[centralgal].CGMgas, galaxies[centralgal].MetalsCGMgas);
 
+                // FIX 2.1: Bounds check on metals to prevent floating-point precision issues
+                double metalsCGM_to_eject = metallicityCGM * ejected_mass;
+                if(metalsCGM_to_eject > galaxies[centralgal].MetalsCGMgas) {
+                    metalsCGM_to_eject = galaxies[centralgal].MetalsCGMgas;
+                }
+
                 // Eject from CGM to EjectedMass
                 galaxies[centralgal].CGMgas -= ejected_mass;
-                galaxies[centralgal].MetalsCGMgas -= metallicityCGM * ejected_mass;
+                galaxies[centralgal].MetalsCGMgas -= metalsCGM_to_eject;
                 galaxies[centralgal].EjectedMass += ejected_mass;
-                galaxies[centralgal].MetalsEjectedMass += metallicityCGM * ejected_mass;
+                galaxies[centralgal].MetalsEjectedMass += metalsCGM_to_eject;
 
             } else {
                 // Hot-ICM-regime: Cold --> HotGas --> Ejected
-                
+
                 // Add reheated gas to HotGas
                 galaxies[centralgal].HotGas += reheated_mass;
                 galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
@@ -886,15 +912,21 @@ void update_from_feedback(const int p, const int centralgal, double reheated_mas
                 }
                 const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
 
+                // FIX 2.1: Bounds check on metals to prevent floating-point precision issues
+                double metalsHot_to_eject = metallicityHot * ejected_mass;
+                if(metalsHot_to_eject > galaxies[centralgal].MetalsHotGas) {
+                    metalsHot_to_eject = galaxies[centralgal].MetalsHotGas;
+                }
+
                 // Eject from HotGas to EjectedMass
                 galaxies[centralgal].HotGas -= ejected_mass;
-                galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
+                galaxies[centralgal].MetalsHotGas -= metalsHot_to_eject;
                 galaxies[centralgal].EjectedMass += ejected_mass;
-                galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_mass;
+                galaxies[centralgal].MetalsEjectedMass += metalsHot_to_eject;
             }
         } else {
             // Original SAGE behavior: Cold --> HotGas --> Ejected
-            
+
             // Add reheated gas to HotGas
             galaxies[centralgal].HotGas += reheated_mass;
             galaxies[centralgal].MetalsHotGas += metallicity * reheated_mass;
@@ -905,11 +937,17 @@ void update_from_feedback(const int p, const int centralgal, double reheated_mas
             }
             const double metallicityHot = get_metallicity(galaxies[centralgal].HotGas, galaxies[centralgal].MetalsHotGas);
 
+            // FIX 2.1: Bounds check on metals to prevent floating-point precision issues
+            double metalsHot_to_eject = metallicityHot * ejected_mass;
+            if(metalsHot_to_eject > galaxies[centralgal].MetalsHotGas) {
+                metalsHot_to_eject = galaxies[centralgal].MetalsHotGas;
+            }
+
             // Eject from HotGas to EjectedMass
             galaxies[centralgal].HotGas -= ejected_mass;
-            galaxies[centralgal].MetalsHotGas -= metallicityHot * ejected_mass;
+            galaxies[centralgal].MetalsHotGas -= metalsHot_to_eject;
             galaxies[centralgal].EjectedMass += ejected_mass;
-            galaxies[centralgal].MetalsEjectedMass += metallicityHot * ejected_mass;
+            galaxies[centralgal].MetalsEjectedMass += metalsHot_to_eject;
         }
 
         galaxies[p].OutflowRate += reheated_mass;
@@ -1111,12 +1149,19 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
                     rho_sd_2 = rho_star / 0.01;
                 }
                 if(rho_sd_2 < 1e-4) rho_sd_2 = 1e-4;
-                double t_hydro_star_Gyr = 3.1 / pow(Sigma_gas, 0.25) + 100.0 / ((fc/5.0) * Z_prime * sqrt(rho_sd_2) * Sigma_gas);
-                double t_hydro_gas_Gyr = 3.1 / pow(Sigma_gas, 0.25) + 360.0 / ((fc/5.0) * Z_prime * pow(Sigma_gas, 2.0));
+                /* BUG FIX: Protect against division by zero when Sigma_gas is zero */
+                double t_hydro_star_Gyr, t_hydro_gas_Gyr;
+                if(Sigma_gas > 1e-10) {
+                    t_hydro_star_Gyr = 3.1 / pow(Sigma_gas, 0.25) + 100.0 / ((fc/5.0) * Z_prime * sqrt(rho_sd_2) * Sigma_gas);
+                    t_hydro_gas_Gyr = 3.1 / pow(Sigma_gas, 0.25) + 360.0 / ((fc/5.0) * Z_prime * pow(Sigma_gas, 2.0));
+                } else {
+                    t_hydro_star_Gyr = 1.0e10;
+                    t_hydro_gas_Gyr = 1.0e10;
+                }
                 double t_dep_Gyr = t_dep_2p_Gyr;
                 if(t_hydro_star_Gyr < t_dep_Gyr) t_dep_Gyr = t_hydro_star_Gyr;
                 if(t_hydro_gas_Gyr < t_dep_Gyr) t_dep_Gyr = t_hydro_gas_Gyr;
-                double f_H2_eff = 3.1 / (t_dep_Gyr * pow(Sigma_gas, 0.25));
+                double f_H2_eff = (Sigma_gas > 1e-10) ? 3.1 / (t_dep_Gyr * pow(Sigma_gas, 0.25)) : 0.0;
                 if(f_H2_eff > 1.0) f_H2_eff = 1.0;
                 if(f_H2_eff < 0.0) f_H2_eff = 0.0;
                 galaxies[p].H2gas = f_H2_eff * (galaxies[p].ColdGas * HYDROGEN_MASS_FRAC);
@@ -1181,6 +1226,14 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
     metallicity = get_metallicity(galaxies[p].ColdGas, galaxies[p].MetalsColdGas);
     update_from_star_formation(p, stars, metallicity, galaxies, run_params);
     
+    // Track star formation history - accumulate stellar mass formed at this snapshot
+    if(run_params->SaveFullSFH) {
+        const int snapnum = galaxies[p].SnapNum;
+        if(snapnum >= 0 && snapnum < ABSOLUTEMAXSNAPS) {
+            galaxies[p].SFHMassDisk[snapnum] += (1.0 - run_params->RecycleFraction) * stars;
+        }
+    }
+    
     // ========================================================================
     // Stars first form, then feedback acts on them
     // Key physics: star formation completes on free-fall time (~1 Myr)
@@ -1204,13 +1257,15 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
             } else {
                 double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
                 double v_term;
-                if (vc < V_CRIT) {
-                    v_term = pow(vc / V_CRIT, -3.2);
+                /* BUG FIX: Apply floor to vc to prevent overflow in pow() for very small halos */
+                double vc_floored = (vc < 1.0) ? 1.0 : vc;  /* Floor at 1 km/s */
+                if (vc_floored < V_CRIT) {
+                    v_term = pow(vc_floored / V_CRIT, -3.2);
                 } else {
-                    v_term = pow(vc / V_CRIT, -1.0);
+                    v_term = pow(vc_floored / V_CRIT, -1.0);
                 }
                 double scaling_factor = z_term * v_term;
-                
+
                 // Reheating with Muratov scaling: η = 2.9 × (1+z)^α × (V/60)^β
                 double eta_reheat = run_params->FeedbackReheatingEpsilon * scaling_factor;
                 // Store mass loading for analysis (cast to float)
@@ -1249,10 +1304,12 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
                 } else {
                     double z_term = pow(1.0 + z, run_params->RedshiftPowerLawExponent);
                     double v_term;
-                    if (vc < V_CRIT) {
-                        v_term = pow(vc / V_CRIT, -3.2);
+                    /* BUG FIX: Apply floor to vc to prevent overflow in pow() for very small halos */
+                    double vc_floored = (vc < 1.0) ? 1.0 : vc;  /* Floor at 1 km/s */
+                    if (vc_floored < V_CRIT) {
+                        v_term = pow(vc_floored / V_CRIT, -3.2);
                     } else {
-                        v_term = pow(vc / V_CRIT, -1.0);
+                        v_term = pow(vc_floored / V_CRIT, -1.0);
                     }
                     double scaling_factor = z_term * v_term;
                     
@@ -1403,7 +1460,8 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
             // s = ln(1 + 0.6*chi) / (0.04 * Sigma_comp * Z')
             // Note: 0.04 constant includes units for Sigma in Msun/pc^2
             float s = 0.0;
-            if (Sigma_comp > 0.0) {
+            /* BUG FIX: Check both Sigma_comp > 0 AND tau_c > 0 to avoid division by zero */
+            if (Sigma_comp > 0.0 && tau_c > 1e-10) {
                 s = log(1.0 + 0.6 * chi + 0.01 * chi * chi) / (0.6 * tau_c);
             } else {
                 s = 100.0; // Large s implies f_H2 -> 0
@@ -1479,17 +1537,24 @@ void starformation_ffb(const int p, const int centralgal, const double dt, const
                     rho_sd_2 = rho_star / 0.01;
                 }
                 if(rho_sd_2 < 1e-4) rho_sd_2 = 1e-4;
-                
-                double t_hydro_star_Gyr = 3.1 / pow(Sigma_gas, 0.25) + 
-                                          100.0 / ((fc/5.0) * Z_prime * sqrt(rho_sd_2) * Sigma_gas);
-                double t_hydro_gas_Gyr = 3.1 / pow(Sigma_gas, 0.25) + 
-                                         360.0 / ((fc/5.0) * Z_prime * pow(Sigma_gas, 2.0));
-                
+
+                /* BUG FIX: Protect against division by zero when Sigma_gas is zero */
+                double t_hydro_star_Gyr, t_hydro_gas_Gyr;
+                if(Sigma_gas > 1e-10) {
+                    t_hydro_star_Gyr = 3.1 / pow(Sigma_gas, 0.25) +
+                                       100.0 / ((fc/5.0) * Z_prime * sqrt(rho_sd_2) * Sigma_gas);
+                    t_hydro_gas_Gyr = 3.1 / pow(Sigma_gas, 0.25) +
+                                      360.0 / ((fc/5.0) * Z_prime * pow(Sigma_gas, 2.0));
+                } else {
+                    t_hydro_star_Gyr = 1.0e10;
+                    t_hydro_gas_Gyr = 1.0e10;
+                }
+
                 double t_dep_Gyr = t_dep_2p_Gyr;
                 if(t_hydro_star_Gyr < t_dep_Gyr) t_dep_Gyr = t_hydro_star_Gyr;
                 if(t_hydro_gas_Gyr < t_dep_Gyr) t_dep_Gyr = t_hydro_gas_Gyr;
-                
-                double f_H2_eff = 3.1 / (t_dep_Gyr * pow(Sigma_gas, 0.25));
+
+                double f_H2_eff = (Sigma_gas > 1e-10) ? 3.1 / (t_dep_Gyr * pow(Sigma_gas, 0.25)) : 0.0;
                 if(f_H2_eff > 1.0) f_H2_eff = 1.0;
                 if(f_H2_eff < 0.0) f_H2_eff = 0.0;
                 

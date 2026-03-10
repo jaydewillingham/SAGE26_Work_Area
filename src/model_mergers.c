@@ -238,6 +238,10 @@ void grow_black_hole(const int merger_centralgal, const double mass_ratio, struc
         galaxies[merger_centralgal].BlackHoleMass += BHaccrete;
         galaxies[merger_centralgal].ColdGas -= BHaccrete;
         galaxies[merger_centralgal].MetalsColdGas -= metallicity * BHaccrete;
+        /* BUG FIX: Ensure metals don't go negative due to numerical precision */
+        if(galaxies[merger_centralgal].MetalsColdGas < 0.0) {
+            galaxies[merger_centralgal].MetalsColdGas = 0.0;
+        }
 
         galaxies[merger_centralgal].QuasarModeBHaccretionMass += BHaccrete;
 
@@ -336,28 +340,47 @@ void add_galaxies_together(const int t, const int p, struct GALAXY *galaxies, co
     galaxies[t].BulgeMass += galaxies[p].StellarMass;
     galaxies[t].MetalsBulgeMass += galaxies[p].MetalsStellarMass;
 
-    // Track origin based on morphology (Tonini+2016 logic)
-    const double disk_mass = galaxies[t].StellarMass - galaxies[t].BulgeMass;
-    const double disk_fraction = (galaxies[t].StellarMass > 0.0) ? 
-                                 disk_mass / galaxies[t].StellarMass : 0.0;
-    
-    if(disk_fraction > 0.5) {
-        // Disc-dominated: minor merger triggers instability
-        const double added_mass = galaxies[p].StellarMass;
-        galaxies[t].InstabilityBulgeMass += added_mass;
-        const double old_disk_radius = galaxies[t].DiskScaleRadius;
-        
-        // UPDATE: Tonini incremental radius evolution (equation 16)
-        update_instability_bulge_radius(t, added_mass, old_disk_radius, galaxies, run_params);
-    } else {
-        // Spheroid-dominated: grows merger bulge
-        galaxies[t].MergerBulgeMass += galaxies[p].StellarMass;
+    // FIX 1.1: Preserve the satellite's existing bulge component breakdown
+    // The satellite's bulge already has InstabilityBulgeMass and MergerBulgeMass components
+    // These should be transferred to the central's corresponding components
+    galaxies[t].InstabilityBulgeMass += galaxies[p].InstabilityBulgeMass;
+    galaxies[t].MergerBulgeMass += galaxies[p].MergerBulgeMass;
+
+    // The satellite's DISK mass (StellarMass - BulgeMass) becomes new bulge mass
+    // Track this based on the central's current morphology (Tonini+2016 logic)
+    const double satellite_disk_mass = galaxies[p].StellarMass - galaxies[p].BulgeMass;
+
+    if(satellite_disk_mass > 0.0) {
+        const double disk_mass = galaxies[t].StellarMass - galaxies[t].BulgeMass;
+        const double disk_fraction = (galaxies[t].StellarMass > 0.0) ?
+                                     disk_mass / galaxies[t].StellarMass : 0.0;
+
+        if(disk_fraction > 0.5) {
+            // Disc-dominated: minor merger triggers instability
+            galaxies[t].InstabilityBulgeMass += satellite_disk_mass;
+            const double old_disk_radius = galaxies[t].DiskScaleRadius;
+
+            // UPDATE: Tonini incremental radius evolution (equation 16)
+            update_instability_bulge_radius(t, satellite_disk_mass, old_disk_radius, galaxies, run_params);
+        } else {
+            // Spheroid-dominated: grows merger bulge
+            galaxies[t].MergerBulgeMass += satellite_disk_mass;
+        }
     }
 
     for(int step = 0; step < STEPS; step++) {
         galaxies[t].SfrBulge[step] += galaxies[p].SfrDisk[step] + galaxies[p].SfrBulge[step];
         galaxies[t].SfrBulgeColdGas[step] += galaxies[p].SfrDiskColdGas[step] + galaxies[p].SfrBulgeColdGas[step];
         galaxies[t].SfrBulgeColdGasMetals[step] += galaxies[p].SfrDiskColdGasMetals[step] + galaxies[p].SfrBulgeColdGasMetals[step];
+    }
+
+    // Transfer star formation history from satellite to central
+    // During a merger, the central inherits all star formation history from the satellite
+    if(run_params->SaveFullSFH) {
+        for(int snap = 0; snap < ABSOLUTEMAXSNAPS; snap++) {
+            galaxies[t].SFHMassDisk[snap] += galaxies[p].SFHMassDisk[snap];
+            galaxies[t].SFHMassBulge[snap] += galaxies[p].SFHMassBulge[snap];
+        }
     }
 }
 
@@ -519,6 +542,14 @@ void collisional_starburst_recipe(const double mass_ratio, const int merger_cent
     metallicity = get_metallicity(galaxies[merger_centralgal].ColdGas, galaxies[merger_centralgal].MetalsColdGas);
     update_from_star_formation(merger_centralgal, stars, metallicity, galaxies, run_params);
 
+    // Track star formation history for bulge starbursts
+    if(run_params->SaveFullSFH) {
+        const int snapnum = galaxies[merger_centralgal].SnapNum;
+        if(snapnum >= 0 && snapnum < ABSOLUTEMAXSNAPS) {
+            galaxies[merger_centralgal].SFHMassBulge[snapnum] += (1.0 - run_params->RecycleFraction) * stars;
+        }
+    }
+
     // FIX: Track burst stars in the appropriate bulge component
     const double recycled_stars = (1 - run_params->RecycleFraction) * stars;
     
@@ -625,9 +656,44 @@ void disrupt_satellite_to_ICS(const int centralgal, const int gal, struct GALAXY
     galaxies[centralgal].ICS += galaxies[gal].ICS;
     galaxies[centralgal].MetalsICS += galaxies[gal].MetalsICS;
 
-    // Disrupt stellar mass to ICS (same for all regimes)
-    galaxies[centralgal].ICS += galaxies[gal].StellarMass;
-    galaxies[centralgal].MetalsICS += galaxies[gal].MetalsStellarMass;
+    // Track ICS assembly: pre-existing satellite ICS goes to ICS_accrete
+    // This ICS was formed elsewhere (in the satellite's halo) and is being brought in
+    if(run_params->TrackICSAssembly && galaxies[gal].ICS > 0.0) {
+        galaxies[centralgal].ICS_accrete += galaxies[gal].ICS;
+    }
+
+    // Disrupt stellar mass: split between ICS and BCG based on FractionDisruptedToICS
+    // FractionDisruptedToICS = 1.0 means all to ICS (original behavior)
+    // FractionDisruptedToICS = 0.5 means half to ICS, half to BCG
+    const double frac_to_ICS = run_params->FractionDisruptedToICS;
+    const double frac_to_BCG = 1.0 - frac_to_ICS;
+    const double new_ICS_from_stripping = frac_to_ICS * galaxies[gal].StellarMass;
+
+    galaxies[centralgal].ICS += new_ICS_from_stripping;
+    galaxies[centralgal].MetalsICS += frac_to_ICS * galaxies[gal].MetalsStellarMass;
+    
+    // Track ICS assembly: newly disrupted stellar mass goes to ICS_disrupt
+    if(run_params->TrackICSAssembly) {
+        galaxies[centralgal].ICS_disrupt += new_ICS_from_stripping;
+    }
+
+    // Add remainder to BCG bulge (accreted onto outer envelope)
+    galaxies[centralgal].StellarMass += frac_to_BCG * galaxies[gal].StellarMass;
+    galaxies[centralgal].MetalsStellarMass += frac_to_BCG * galaxies[gal].MetalsStellarMass;
+    galaxies[centralgal].BulgeMass += frac_to_BCG * galaxies[gal].StellarMass;
+    galaxies[centralgal].MetalsBulgeMass += frac_to_BCG * galaxies[gal].MetalsStellarMass;
+    galaxies[centralgal].MergerBulgeMass += frac_to_BCG * galaxies[gal].StellarMass;  // Track as merger-driven
+
+    // Transfer star formation history from disrupted satellite to central
+    // - Fraction going to BCG bulge: track in SFHMassBulge (stellar ages)
+    // Note: For ICS stellar ages, we would need SFHMassICS, but that's been replaced
+    // by ICS_disrupt/ICS_accrete which track assembly times, not stellar ages
+    if(run_params->SaveFullSFH) {
+        for(int snap = 0; snap < ABSOLUTEMAXSNAPS; snap++) {
+            const double sat_sfh = galaxies[gal].SFHMassDisk[snap] + galaxies[gal].SFHMassBulge[snap];
+            galaxies[centralgal].SFHMassBulge[snap] += frac_to_BCG * sat_sfh;
+        }
+    }
 
     // what should we do with the disrupted satellite BH?
     galaxies[gal].mergeType = 4;  // mark as disruption to the ICS

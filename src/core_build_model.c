@@ -207,6 +207,11 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
                     }
                     galaxies[ngal].Mvir = get_virial_mass(halonr, halos, run_params);
 
+                    // AGNrecipeOn==4: Seed BH if halo grew above 10^10 Msun/h and has no BH
+                    if(run_params->AGNrecipeOn == 4 && galaxies[ngal].BlackHoleMass == 0.0 && galaxies[ngal].Mvir > 1.0) {
+                        galaxies[ngal].BlackHoleMass = 1.0e-6;  // 10^4 Msun/h seed
+                    }
+
                     galaxies[ngal].Cooling = 0.0;
                     galaxies[ngal].Heating = 0.0;
                     galaxies[ngal].QuasarModeBHaccretionMass = 0.0;
@@ -239,6 +244,7 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
                             galaxies[ngal].infallMvir = previousMvir;
                             galaxies[ngal].infallVvir = previousVvir;
                             galaxies[ngal].infallVmax = previousVmax;
+                            galaxies[ngal].infallStellarMass = galaxies[ngal].StellarMass;
                             galaxies[ngal].TimeOfInfall = halos[halonr].SnapNum;  // Track snapshot of infall
 
                         }
@@ -262,6 +268,7 @@ int join_galaxies_of_progenitors(const int halonr, const int ngalstart, int *gal
                         galaxies[ngal].infallMvir = previousMvir;
                         galaxies[ngal].infallVvir = previousVvir;
                         galaxies[ngal].infallVmax = previousVmax;
+                        galaxies[ngal].infallStellarMass = galaxies[ngal].StellarMass;
                     }
 
                     galaxies[ngal].Type = 2;

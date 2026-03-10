@@ -151,6 +151,12 @@ struct GALAXY
     float SfrBulgeColdGas[STEPS];
     float SfrBulgeColdGasMetals[STEPS];
 
+    /* full star formation history - tracks stellar mass formed at each snapshot */
+    float SFHMassDisk[ABSOLUTEMAXSNAPS];   /* stellar mass formed in disk at each snapshot */
+    float SFHMassBulge[ABSOLUTEMAXSNAPS];  /* stellar mass formed in bulge (starbursts) at each snapshot */
+    float ICS_disrupt;                     /* cumulative stellar mass disrupted to ICS (assembly tracking) */
+    float ICS_accrete;                     /* cumulative ICS accreted from satellites (assembly tracking) */
+
     /* misc */
     float DiskScaleRadius;
     float BulgeRadius;
@@ -169,6 +175,7 @@ struct GALAXY
     float infallMvir;
     float infallVvir;
     float infallVmax;
+    float infallStellarMass;
     float TimeOfInfall;
 
     float MassLoading;
@@ -458,6 +465,8 @@ struct params
     int32_t    FeedbackFreeModeOn;
     int32_t    BulgeSizeOn;
     int32_t    H2DiskAreaOption;  // 0 = π*r_s², 1 = π*(3*r_s)², 2 = 2π*r_s² (central Σ₀)
+    int32_t    SaveFullSFH;       // 0 = save averaged SFR (default), 1 = save full SfrDisk[STEPS] and SfrBulge[STEPS] arrays
+    int32_t    TrackICSAssembly;  // 0 = off, 1 = track ICS_disrupt and ICS_accrete
 
     double RecycleFraction;
     double Yield;
@@ -475,6 +484,7 @@ struct params
     double Reionization_z0;
     double Reionization_zr;
     double ThresholdSatDisruption;
+    double FractionDisruptedToICS;  // Fraction of disrupted satellite stellar mass that goes to ICS (rest goes to BCG)
     double RedshiftPowerLawExponent;
 
     double UnitLength_in_cm;

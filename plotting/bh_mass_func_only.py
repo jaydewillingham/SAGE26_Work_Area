@@ -30,6 +30,7 @@ warnings.filterwarnings("ignore")
 class SimConfig:
     """Simulation and file configuration."""
     dir_name: str = '../output/my_mini_millennium/'
+    #dir_name: str = '../output/mini_millenn_AGNefficiency/'
     file_name: str = 'model_0.hdf5'
     hubble_h: float = 0.678
     box_size: float = 62.5        # h^-1 Mpc
@@ -82,7 +83,9 @@ class PlotConfig:
     # BHMF histogram parameters
     mass_bin_min: float = 5.0
     mass_bin_max: float = 11.5
-    mass_bin_width: float = 0.1
+    # CHANGED: Increased bin width to smooth jagged model lines as suggested.
+    # 0.25 is a good start; 0.5 is another option for even smoother results.
+    mass_bin_width: float = 0.25
     # Axis limits
     xlim: tuple = (5.5, 10.0)
     ylim: tuple = (1e-5, 1e-2)
@@ -248,7 +251,6 @@ def find_nearest_snapshot(target_z: float, redshifts: List[float]) -> tuple:
     idx = int(np.argmin(np.abs(np.array(redshifts) - target_z)))
     return idx, redshifts[idx]
 
-
 # ==============================================================================
 # Plotting
 # ==============================================================================
@@ -307,13 +309,13 @@ def plot_bhmf(
 
     Model predictions are shown as solid lines; observational constraints
     as dashed lines with shaded 16th–84th percentile uncertainty bands.
-    Redshift is encoded via a colourbar rather than a cluttered legend.
+    A single legend explains both line style and redshift color-coding.
     """
     print("Plotting black hole mass function...")
 
     apply_publication_style()
 
-    # --- Setup figure with room for colorbar ---
+    # --- Setup figure ---
     fig, ax = plt.subplots(figsize=(7.0, 6.0))
 
     # --- Colormap / normalisation ---
@@ -327,6 +329,8 @@ def plot_bhmf(
         plot_cfg.mass_bin_max + plot_cfg.mass_bin_width,
         plot_cfg.mass_bin_width,
     )
+
+    redshift_legend_handles = []
 
     # --- Plot each redshift ---
     for target_z in plot_cfg.bhmf_redshifts:
@@ -344,6 +348,11 @@ def plot_bhmf(
             ax.plot(
                 bin_centers[valid], phi[valid],
                 color=color, lw=2.0, ls='-', zorder=3,
+            )
+            # Collect a handle for the redshift-color mapping.
+            label = f'z = {target_z:.1f}'
+            redshift_legend_handles.append(
+                Line2D([0], [0], color=color, lw=2.0, ls='-', label=label)
             )
 
         # Observational data
@@ -366,23 +375,25 @@ def plot_bhmf(
                     color=color, alpha=0.15, zorder=1,
                 )
 
-    # --- Colorbar (replaces individual legend entries per redshift) ---
-    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax, pad=0.03, aspect=30)
-    cbar.set_label(r'Redshift $z$', fontsize=13)
-    cbar.set_ticks(plot_cfg.bhmf_redshifts)
-    cbar.ax.tick_params(labelsize=11, direction='in')
+    # --- CHANGED: Create a single, combined legend ---
 
-    # --- Line-style legend (model vs. observations only — 2 entries) ---
-    legend_elements = [
+    # 1. Define handles for the line styles using a neutral color.
+    style_handles = [
         Line2D([0], [0], color='0.3', lw=2.0, ls='-',
-               label='SAGE model'),
+               label='SAGE26'),
         Line2D([0], [0], color='0.3', lw=1.5, ls='--',
-               label=r'Observations (16th–84th percentile)'),
+               label=r'Zhang+23'),
     ]
+
+    # 2. Create a blank handle to act as a visual separator.
+    separator_handle = Line2D([0], [0], color='none', label='')
+
+    # 3. Combine style, separator, and redshift handles into one list.
+    all_handles = style_handles + [separator_handle] + redshift_legend_handles
+
+    # 4. Create the legend.
     ax.legend(
-        handles=legend_elements,
+        handles=all_handles,
         loc='upper right',
         fontsize=10,
         framealpha=0.9,
@@ -434,7 +445,12 @@ def main() -> None:
     os.makedirs(output_dir, exist_ok=True)
 
     # Load data
-    props = load_all_snapshots(sim_cfg)
+    try:
+        props = load_all_snapshots(sim_cfg)
+    except (FileNotFoundError, KeyError) as e:
+        print(f"\n[ERROR] Failed to load simulation data: {e}")
+        print("Please check that 'SimConfig.dir_name' and 'SimConfig.file_name' are correct.")
+        return
 
     # Plot
     plot_bhmf(props, sim_cfg, plot_cfg, output_dir)

@@ -1,0 +1,30 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: redshift_bin, datatype: int64}
+# - {name: M_1600, unit: mag, datatype: float64, description: Absolute Magnitude AB}
+# - {name: phi, unit: Mpc-3 mag-1, datatype: float64, description: Number density}
+# - {name: phi_err, unit: Mpc-3 mag-1, datatype: float64, description: Error}
+# meta: !!omap
+# - {Table: Search Fields LF (z>=6)}
+# - {Note: z<5.5 excluded as per previous instruction}
+# schema: astropy-2.0
+redshift_bin M_1600 phi phi_err
+8 -21.85 0.000003 0.000002
+8 -21.35 0.000012 0.000004
+8 -20.85 0.000041 0.000011
+8 -20.10 0.000120 0.000040
+8 -19.35 0.000657 0.000233
+8 -18.60 0.001100 0.000340
+8 -17.60 0.003020 0.001140
+9 -21.92 0.000001 0.000001
+9 -21.12 0.000007 0.000003
+9 -20.32 0.000026 0.000009
+9 -19.12 0.000187 0.000150
+9 -17.92 0.000923 0.000501
+10 -22.25 0.0 0.0
+10 -21.25 0.000001 0.000001
+10 -20.25 0.000010 0.000005
+10 -19.25 0.000034 0.000022
+10 -18.25 0.000190 0.000120
+10 -17.25 0.000630 0.000520

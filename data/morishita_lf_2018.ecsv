@@ -1,0 +1,17 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: redshift_approx, datatype: int64}
+# - {name: M_UV, unit: mag, datatype: float64, description: UV Magnitude}
+# - {name: log_phi, unit: log(Mpc-3 mag-1), datatype: float64, description: Log Number density}
+# - {name: log_phi_err_up, unit: log(Mpc-3 mag-1), datatype: float64, description: Upper error bound}
+# - {name: log_phi_err_low, unit: log(Mpc-3 mag-1), datatype: float64, description: Lower error bound}
+# - {name: is_upper_limit, datatype: bool, description: True if value is an upper limit}
+# schema: astropy-2.0
+redshift_approx M_UV log_phi log_phi_err_up log_phi_err_low is_upper_limit
+10 -23.0 -6.1 0.5 0.8 False
+10 -22.0 -5.9 0.0 0.0 True
+10 -21.0 -4.6 0.0 0.0 True
+9 -23.0 -5.9 0.0 0.0 True
+9 -22.0 -5.9 0.5 0.8 False
+9 -21.0 -5.4 0.5 0.8 False

@@ -22,7 +22,6 @@ Author: Generated for SAGE26 SAM visualization
 import h5py as h5
 import numpy as np
 import pyvista as pv
-import ffmpeg
 import argparse
 import os
 from scipy.stats import gaussian_kde
@@ -55,14 +54,12 @@ def mpi_barrier():
 # ========================== CONFIGURATION ==========================
 
 # File paths (relative to SAGE26 root)
-#pwd:/home/jwilling/SAGE26/plotting
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-DATA_DIR = os.path.join(ROOT_DIR, 'output', 'my_mini_millennium')
+DATA_DIR = os.path.join(ROOT_DIR, 'output', 'millennium')
 DATA_FILE = os.path.join(DATA_DIR, 'model_0.hdf5')
 OUTPUT_DIR = os.path.join(DATA_DIR, 'movies')
-#TREE_DIR = os.path.join(ROOT_DIR, 'input', 'millennium', 'trees')
-TREE_DIR = '/fred/oz004/jwillingham/gadget_output/mini_millennium_output/treedata'
+TREE_DIR = os.path.join(ROOT_DIR, 'input', 'millennium', 'trees')
 
 # Simulation parameters
 HUBBLE_H = 0.73
@@ -77,8 +74,7 @@ EVOLUTION_DURATION = 10   # seconds for time evolution
 COMBINED_DURATION = 10    # seconds for combined animation
 
 # Output format: 'mp4', 'mov', 'gif', or 'frames' (individual PNG files)
-#OUTPUT_FORMAT = 'frames'
-OUTPUT_FORMAT = 'gif'
+OUTPUT_FORMAT = 'frames'
 
 # Galaxy selection
 MIN_STELLAR_MASS = 1.0e8  # Minimum stellar mass in Msun (after unit conversion)
@@ -175,8 +171,8 @@ def load_halo_data(tree_dir, snapshot_num, mass_cut=HALO_MIN_MASS, max_halos=500
     all_masses = []
 
     # Read all tree files
-    for file_num in range(4):
-        tree_file = os.path.join(tree_dir, f'trees.{file_num}')
+    for file_num in range(8):
+        tree_file = os.path.join(tree_dir, f'trees_063.{file_num}')
         if not os.path.exists(tree_file):
             continue
 

@@ -50,6 +50,8 @@ extern "C" {
       float EjectedMass;
       float BlackHoleMass;
       float ICS;
+      float ICS_disrupt;
+      float ICS_accrete;
       float H2gas;
       float H1gas;
 
@@ -86,6 +88,7 @@ extern "C" {
       float infallMvir;
       float infallVvir;
       float infallVmax;
+      float infallStellarMass;
       float TimeOfInfall;
 
       /* CGM properties */
@@ -99,6 +102,8 @@ extern "C" {
       float RcoolToRvir;
 
       int FFBRegime;
+      float mdot_cool;
+      float mdot_stream;
     };
 
     /* Proto-Types */

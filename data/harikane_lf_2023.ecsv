@@ -1,0 +1,27 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: redshift_approx, datatype: int64, description: Approximate Redshift}
+# - {name: M_UV, unit: mag, datatype: float64, description: UV Magnitude (AB)}
+# - {name: phi, unit: Mpc-3 mag-1, datatype: float64, description: Number density}
+# - {name: phi_err_up, unit: Mpc-3 mag-1, datatype: float64, description: Upper error bound}
+# - {name: phi_err_low, unit: Mpc-3 mag-1, datatype: float64, description: Lower error bound}
+# meta: !!omap
+# - {Table: Obtained Luminosity Function at each Redshift (Dropouts)}
+# - {Note: Upper limits set to 0.0}
+# schema: astropy-2.0
+redshift_approx M_UV phi phi_err_up phi_err_low
+9 -23.03 0.0 0.0 0.0
+9 -22.03 0.0 0.0 0.0
+9 -21.03 4.00e-5 9.42e-5 3.85e-5
+9 -20.03 4.08e-5 9.60e-5 3.92e-5
+9 -19.03 2.24e-4 1.87e-4 1.46e-4
+9 -18.03 1.12e-3 1.03e-3 0.90e-3
+12 -23.21 0.0 0.0 0.0
+12 -22.21 0.0 0.0 0.0
+12 -21.21 5.00e-6 11.56e-6 4.27e-6
+12 -20.21 1.31e-5 1.75e-5 0.89e-5
+12 -19.21 2.40e-5 2.38e-5 1.40e-5
+12 -18.21 1.42e-4 1.97e-4 1.10e-4
+16 -23.59 0.0 0.0 0.0
+16 -20.59 6.62e-6 8.84e-6 4.49e-6

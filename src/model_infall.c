@@ -37,9 +37,20 @@ double infall_recipe(const int centralgal, const int ngal, const double Zcurr, s
             // satellite ejected gas goes to central ejected reservior
             galaxies[i].EjectedMass = galaxies[i].MetalsEjectedMass = 0.0;
 
-            // satellite ICS goes to central ICS
+            // satellite ICS (and its assembly history) goes to central
+            // if the satellite carried ICS it was a former group central
+            if(galaxies[i].ICS > 0.0) {
+                // Track this ICS mass as accretion - this ICS was formed elsewhere
+                // and is now being brought in by the infalling satellite
+                if(run_params->TrackICSAssembly) {
+                    galaxies[centralgal].ICS_accrete += galaxies[i].ICS;
+                    // Zero out satellite's history (absorbed into central's accretion channel)
+                    galaxies[i].ICS_disrupt = 0.0;
+                    galaxies[i].ICS_accrete = 0.0;
+                }
+            }
             galaxies[i].ICS = galaxies[i].MetalsICS = 0.0;
-            
+
             // satellite CGM goes to central CGM
             galaxies[i].CGMgas = galaxies[i].MetalsCGMgas = 0.0;
         }

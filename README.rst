@@ -1,18 +1,15 @@
-This repo includes my work with SAGE26 as a place for backing up my work, version control and saving my unique plotting scripts. 
-
-The original work of this repo can be found at https://github.com/MBradley1985/SAGE26 amd further https://github.com/sage-home/sage-model.
-
-Below is the readME from the latest version of the SAGE code.  
-
-
+.. image:: ./SAGElogo.png
+   :width: 300
+   :alt: Project Logo
+   :align: center
 *************************************
 Semi-Analytic Galaxy Evolution (SAGE)
 *************************************
 
 ``SAGE`` is a publicly available code-base for modelling galaxy formation in a
 cosmological context. A description of the model and its default calibration
-results can be found in `Croton et al. (2016) <https://arxiv.org/abs/1601.04709>`_.
-``SAGE`` is a significant update to that previously used in `Croton et al. (2006) <http://arxiv.org/abs/astro-ph/0508046>`_.
+results can be found in `Bradley et al. (2026) In Preparation`_.
+``SAGE`` is a significant update to that previously used in `Croton et al. (2016) <https://arxiv.org/abs/1601.04709>`_.
 
 ``SAGE`` is written in C and was built to be modular and customisable.
 It will run on any N-body simulation whose trees are organised in a supported format and contain a minimum set of basic halo properties.
@@ -38,8 +35,8 @@ Downloading
 
 .. code::
 
-    $ git clone https://github.com/sage-home/sage-model
-    $ cd sage-model/
+    $ git clone https://github.com/MBradley1985/SAGE26.git
+    $ cd SAGE26/
 
 Building
 --------
@@ -49,14 +46,6 @@ To create the ``SAGE`` executable, simply run the following command:
 .. code::
 
     $ make
-
-``SAGE`` is MPI compatible which can be enabled setting ``USE-MPI = yes`` in
-the ``Makefile``.  To run in parallel, ensure that you have a installed an MPI distribution (OpenMPI, MPICH, Intel MPI etc).
-When compiling with MPI support, the ``Makefile`` expects that the MPI compiler is called ``mpicc`` and is configured appropriately.
-
-Addtionally, ``SAGE`` can be configured to read trees in `HDF5 <https://support.hdfgroup.org/HDF5/>`_ format by setting
-``USE-HDF5 = yes`` in the ``Makefile``. If the input trees are in HDF5 format, or you wish to output the catalogs in HDF5 (rather than the default binary format), then please compile with the ``USE-HDF5 = yes`` option.
-This is set to ``yes`` by default.  Ensure that you have the HDF5 libraries installed and that the ``Makefile`` is configured to find them.
 
 Running the code
 ================
@@ -90,12 +79,9 @@ If you're following the above, these scripts can run as-is to produce a series o
 
 .. code::
 
-    $ cd plotting/
-    $ python3 allresults-local.py
-    $ python3 allresults-history.py
+    $ python plotting/allresults-local.py
+    $ python plotting/allresults-history.py
 
-Near the top of both scripts, there is a "USER OPTIONS" section where you can modify the simulation and plotting details for your own needs. 
-These scripts can be used as a template to read the hdf5 ``SAGE`` model output and to make your own custom figures.
 
 Parameter Optimization with PSO
 ================================
@@ -123,14 +109,36 @@ To get started with SAGE-PSO, please refer to the documentation available in the
 Extra OPTIONS
 =============
 
-There are several H2 star formation and feedback model options that can be enabled by modifying the parameter file.
-There are three options for area calculation in the H2 star formation model.
-Feedback-free burst galaxies can also be enabled.
-CGM building can be turned on or off.
+**There are several H2 star formation and feedback model options that can be enabled by modifying the parameter file.**
 
-Parameters can be manipulated in the parameter file as follows to allow for extra exploration.
+* Blitz and Rosolosky (2006)
+* Krumholz, McKee and Tumlinson (2009)
+* Krumholz and Dekel (2012)
+* Krumholz (2013)
+* Gnedin and Draine (2014)
+* Somerville et al. (2025)
 
-Future work should include black hole recipes from other models, as well as more advanced H2 star formation and feedback models.
+**There are three options for area calculation in the H2 star formation model.**
+
+* Area = pi * r_disc^2
+* Area = pi * (3 * r_disk^2)
+* Area = 2pi * r_disk^2
+
+**FIRE feedback can be enabled to run the model with the FIRE feedback physics.**
+
+**Bulge tracking can be turned on or off.**
+
+* Shen et al. (2020), equation 33
+* Shen et al. (2020), equation 32
+* Tonini et al. (2016)
+
+**Feedback-free burst galaxies can also be enabled.**
+
+**CGM building can be turned on or off.**
+
+**Full star formation histories can be tracked.**
+
+**Parameters can be manipulated in the parameter file to allow for extra exploration, either manually or with the PSO framework.**
 
 Citation
 =========

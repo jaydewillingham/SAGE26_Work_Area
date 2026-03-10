@@ -1,0 +1,32 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: redshift_approx, datatype: int64, description: Approximate Redshift (z)}
+# - {name: reference, datatype: string, description: Literature Reference Code}
+# - {name: log_M_star, unit: log(solMass), datatype: float64, description: Characteristic Mass}
+# - {name: log_M_star_err_up, unit: log(solMass), datatype: float64}
+# - {name: log_M_star_err_low, unit: log(solMass), datatype: float64}
+# - {name: alpha, datatype: float64, description: Faint-end slope}
+# - {name: alpha_err_up, datatype: float64}
+# - {name: alpha_err_low, datatype: float64}
+# - {name: phi_star, unit: 1e-5 Mpc-3 dex-1, datatype: float64, description: Normalization}
+# - {name: phi_star_err_up, unit: 1e-5 Mpc-3 dex-1, datatype: float64}
+# - {name: phi_star_err_low, unit: 1e-5 Mpc-3 dex-1, datatype: float64}
+# meta: !!omap
+# - {Table: Best-fit Parameters of the Schechter Function of the GSMFs}
+# schema: astropy-2.0
+redshift_approx reference log_M_star log_M_star_err_up log_M_star_err_low alpha alpha_err_up alpha_err_low phi_star phi_star_err_up phi_star_err_low
+6 K19 9.80 0.28 0.17 -1.88 0.07 0.07 12.8 9.7 7.3
+6 D14 10.87 1.13 1.06 -2.00 0.57 0.40 1.4 41.1 1.4
+6 G15 10.49 0.32 0.32 -1.55 0.19 0.19 6.19 13.50 4.57
+6 S16 10.72 0.29 0.30 -1.91 0.09 0.09 1.35 1.66 0.75
+6 B18 10.29 0.48 0.56 -1.93 0.05 0.07 5.63 7.12 3.23
+7 D14 10.51 0.00 0.00 -1.89 1.39 0.61 3.6 30.1 3.5
+7 G15 10.69 1.58 1.58 -1.88 0.36 0.36 0.57 59.68 0.57
+7 S16 10.78 0.29 0.28 -1.95 0.18 0.18 0.53 1.10 0.38
+7 B18 10.25 0.45 0.49 -1.95 0.06 0.07 2.82 5.16 1.88
+8 K19 9.67 1.10 0.33 -1.76 0.21 0.19 13.2 25.6 12.5
+8 S16 10.72 0.29 0.29 -2.25 0.72 0.35 0.035 0.246 0.030
+8 B18 10.48 0.90 0.75 -2.25 0.23 0.29 0.089 0.36 0.074
+9 K19 10.11 1.24 0.70 -1.81 0.21 0.18 4.0 32.0 5.0
+9 B18 10.45 0.80 0.85 -2.33 0.30 0.39 0.06 0.66 0.06

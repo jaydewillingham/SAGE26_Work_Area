@@ -1,0 +1,20 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: redshift, datatype: float64}
+# - {name: M_1500, unit: mag, datatype: float64, description: UV Magnitude (1500A)}
+# - {name: phi, unit: 1e-5 Mpc-3 mag-1, datatype: float64, description: Number density}
+# - {name: phi_err, unit: 1e-5 Mpc-3 mag-1, datatype: float64, description: Symmetric error}
+# meta: !!omap
+# - {Table: z=11 and z=13.5 UV LF}
+# schema: astropy-2.0
+redshift M_1500 phi phi_err
+11.0 -22.57 0.012 0.012
+11.0 -21.80 0.129 0.128
+11.0 -20.80 1.254 0.428
+11.0 -20.05 3.974 1.340
+11.0 -19.55 9.863 4.197
+11.0 -18.85 23.490 9.190
+11.0 -18.23 63.080 28.650
+13.5 -19.45 2.469 1.659
+13.5 -18.95 6.199 3.974

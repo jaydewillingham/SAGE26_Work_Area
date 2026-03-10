@@ -1,0 +1,29 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: redshift, datatype: float64}
+# - {name: mag_bin, unit: mag, datatype: float64, description: Magnitude Bin}
+# - {name: number_density, unit: 1e-6 Mpc-3, datatype: float64, description: Number Density}
+# - {name: density_err_up, unit: 1e-6 Mpc-3, datatype: float64}
+# - {name: density_err_low, unit: 1e-6 Mpc-3, datatype: float64}
+# meta: !!omap
+# - {Table: Measured Number Densities for z=9-11 (Assigned z=10)}
+# schema: astropy-2.0
+redshift mag_bin number_density density_err_up density_err_low
+10.0 -22.6 1.050 1.115 0.666
+10.0 -22.5 1.373 1.270 0.712
+10.0 -22.4 1.674 1.338 0.835
+10.0 -22.3 1.985 1.715 0.959
+10.0 -22.2 2.389 1.857 1.020
+10.0 -22.1 2.681 1.936 1.180
+10.0 -22.0 2.511 1.657 1.113
+10.0 -21.9 2.617 1.700 1.248
+10.0 -21.8 2.414 1.593 1.220
+10.0 -21.7 2.827 1.738 1.517
+10.0 -21.6 2.864 1.981 1.459
+10.0 -21.5 3.306 2.300 1.483
+10.0 -21.4 3.789 2.560 1.641
+10.0 -21.3 4.798 3.705 2.151
+10.0 -21.2 4.824 4.075 2.181
+10.0 -21.1 5.125 4.664 2.497
+10.0 -21.0 5.218 3.922 2.590
